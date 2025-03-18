@@ -1,0 +1,2 @@
+results/generated/*.csv filter=lfs diff=lfs merge=lfs -text
+results/debug/*.csv filter=lfs diff=lfs merge=lfs -text
