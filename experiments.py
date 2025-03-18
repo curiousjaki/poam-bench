@@ -4,6 +4,7 @@ import json
 from tqdm import tqdm
 import poam_pb2
 import base64
+import grpc
 
 def final_step_footprinting(df: pd.DataFrame, input_data: json) -> pd.DataFrame:
     df1 = pd.DataFrame(columns=["result", "proof_size", "seconds", "response"])
@@ -11,7 +12,10 @@ def final_step_footprinting(df: pd.DataFrame, input_data: json) -> pd.DataFrame:
     for i in tqdm(range(0, len(df.index))):
         method_payload[df.index[i]] = input_data[df.index[i]]
         with poamlib.experiment_timer() as elapsed:
-            response, proof_size = poamlib.combined_request(json.dumps(method_payload))
+            try:
+                response, proof_size = poamlib.combined_request(json.dumps(method_payload))
+            except grpc.RpcError as e:
+                return pd.concat([df.copy(), df1], axis=1)
             result = response["verificationValue"]
             time = elapsed()
             df1 = pd.concat([df1, pd.DataFrame({df.index[i]:{ "result": result, "proof_size": proof_size, "seconds": time, "response": response}}).T])
@@ -65,7 +69,10 @@ def activity_footprinting_chained(df: pd.DataFrame, input_data: json)-> pd.DataF
             previous = df1.loc[df.index[i-1]]["response"]
             chained = True
         with poamlib.experiment_timer() as elapsed:
-            response, proof_size = poamlib.proof_request(method_payload, previous, chained)
+            try:
+                response, proof_size = poamlib.proof_request(method_payload, previous, chained)
+            except grpc.RpcError as e:
+                return pd.concat([df.copy(), df1], axis=1)
             result = response["verificationValue"]
             time = elapsed()
             df1 = pd.concat([df1, pd.DataFrame({df.index[i]:{ "result": result, "proof_size": proof_size, "seconds": time, "response": response}}).T])

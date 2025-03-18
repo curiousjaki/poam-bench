@@ -7,6 +7,15 @@ from time import sleep
 from timeit import default_timer as timer
 from contextlib import contextmanager
 server_address = "localhost:50051"
+
+max_len = 1024*1024*16-10
+options = [
+    ('grpc.max_receive_message_length', max_len),  # Set to 50MB
+    ('grpc.max_send_message_length', max_len),
+    ('grpc.max_message_length', max_len),
+    ('grpc.max_metadata_size', max_len),
+]
+
 proving_image_id =  [
             2948630792,
             2482136711,
@@ -30,7 +39,7 @@ def proof_request(method_payload, input_data: json = None, chained = False, prov
     # Load input data from JSON file
 
     # Create a channel and a stub
-    channel = grpc.insecure_channel(server_address)
+    channel = grpc.insecure_channel(server_address, options=options)
     stub = poam_pb2_grpc.VerifiableProcessingServiceStub(channel)
     
     if not chained:
@@ -61,6 +70,7 @@ def proof_request(method_payload, input_data: json = None, chained = False, prov
         
         image_id = response.proof_response.image_id
         receipt = base64.b64encode(response.proof_response.receipt)
+        #print(receipt)
 
         receipt_size = len(response.proof_response.receipt)
         #
@@ -73,12 +83,13 @@ def proof_request(method_payload, input_data: json = None, chained = False, prov
         }
         return response_dict, receipt_size
     except grpc.RpcError as e:
+        breakpoint()
         print("gRPC error:", e.details())
 
 
 def compose_request(proof_chain, server_address = "localhost:50051")->tuple[dict, int]:
     # Create a channel and a stub
-    channel = grpc.insecure_channel(server_address)
+    channel = grpc.insecure_channel(server_address, options=options)
     stub = poam_pb2_grpc.VerifiableProcessingServiceStub(channel)
 
     # Construct the ProveRequest message using data from JSON
@@ -106,7 +117,7 @@ def compose_request(proof_chain, server_address = "localhost:50051")->tuple[dict
 
 def verify_request(proof, verification_value = 0.0, server_address = "localhost:50051")->tuple:
     # Create a channel and a stub
-    channel = grpc.insecure_channel(server_address)
+    channel = grpc.insecure_channel(server_address, options=options)
     stub = poam_pb2_grpc.VerifiableProcessingServiceStub(channel)
     # Construct the ProveRequest message using data from JSON
     request = poam_pb2.VerifyRequest(
@@ -126,7 +137,7 @@ def verify_request(proof, verification_value = 0.0, server_address = "localhost:
         print("gRPC error:", e.details())
 
 def combined_request(input_data: json, server_address = "localhost:50051")->tuple[dict,int]:
-    channel = grpc.insecure_channel(server_address)
+    channel = grpc.insecure_channel(server_address, options=options)
     stub = poam_pb2_grpc.VerifiableProcessingServiceStub(channel)
     # Construct the ProveRequest message using data from JSON
     request = poam_pb2.CombinedRequest(

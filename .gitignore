@@ -1,2 +1,7 @@
 env/
-__pychache__
+__pycache__/
+*.eps
+*.pdf
+*.png
+input*
+output*
